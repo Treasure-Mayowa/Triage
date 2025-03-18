@@ -29,7 +29,7 @@ const getResponse = async (message) => {
       },
       {
         "role": "user",
-        "content": {message}
+        "content": `Caller: ${message}`
       }
     ],
   })
@@ -64,7 +64,7 @@ export async function POST(req, res) {
         "Thank you for calling in. I will now process help to your location. Goodbye and stay safe.")
       twiml.hangup()
     }
-    CALLTRANSCRIPT += `User: ${message}\nOperator: ${aiResponse}`
+    CALLTRANSCRIPT += `Caller: ${message}\nOperator: ${aiResponse}`
     const { database } = await connectToDatabase()
     const collection = database.collection("emergencies")
     const emergency = await collection.findOne({ callSid: callSid })
