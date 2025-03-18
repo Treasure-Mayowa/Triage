@@ -1,0 +1,33 @@
+{
+  "name": "triageflow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "mongodb": "^6.14.2",
+    "next": "15.2.2",
+    "ngrok": "^5.0.0-beta.2",
+    "openai": "^4.87.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "twilio": "^5.5.0",
+    "validator": "^13.12.0"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.26.3",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "babel-loader": "^10.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.2",
+    "tailwindcss": "^4"
+  }
+}
