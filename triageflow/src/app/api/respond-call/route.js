@@ -40,6 +40,11 @@ export async function POST(req, res) {
     const message = req.body.SpeechResult
     const callSid = req.body.CallSid
 
+
+    // Construct the absolute URL for the /api/emergencies endpoint
+    const host = req.headers.get("host");
+    const protocol = req.headers.get("x-forwarded-proto") || "http"
+    const emergenciesUrl = `${protocol}://${host}/api/emergencies`
     const twiml = new VoiceResponse()
     if (count < 4) {
       let aiResponse
@@ -71,7 +76,7 @@ export async function POST(req, res) {
     if (emergency) {
       const result = await collection.updateOne({ id: emergency._id }, { $set: { transcript: CALLTRANSCRIPT } })
     } else {
-      const response = await fetch('/api/emergencies', {
+      const response = await fetch(emergenciesUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

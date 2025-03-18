@@ -2,8 +2,8 @@ import twilio from "twilio"
 import VoiceResponse from "twilio/lib/twiml/VoiceResponse"
 import { NextResponse } from "next/server"
 
-const authToken = process.env.TWILIO_ACCOUNT_SID
-const accountSID = process.env.TWILIO_AUTH_TOKEN
+const accountSID = process.env.TWILIO_ACCOUNT_SID
+const authToken = process.env.TWILIO_AUTH_TOKEN
 const client = twilio(accountSID, authToken)
 
 
@@ -16,17 +16,23 @@ export async function POST(req, res) {
     const zip = formData.get("FromZip")
     const callSid = formData.get("CallSid")
 
+    // Construct the absolute URL for the /api/emergencies endpoint
+    const host = req.headers.get("host")
+    const protocol = req.headers.get("x-forwarded-proto") || "http"
+    const emergenciesUrl = `${protocol}://${host}/api/emergencies`
+    const respondCallUrl = `${protocol}://${host}/api/respond-call`
+
     var twiml = new VoiceResponse()
     const gather = twiml.gather({
         timeout: 10,
         input: "speech",
         method: "POST",
-        action: "/api/respond-call"
+        action: respondCallUrl
     })
     gather.say(
         { voice: 'alice' }, 
         "Triageflow, what's your emergency?")
-    const response = await fetch('/api/emergencies', {
+    const response = await fetch(emergenciesUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
