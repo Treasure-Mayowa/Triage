@@ -1,13 +1,14 @@
 const express = require('express')
 const { Server } = require('socket.io')
+require('dotenv').config()
 const http = require('http')
 const cors = require('cors')
 const { connectToDatabase } = require('./lib/mongodb-setup')
 
 const app = express()
 const server = http.createServer(app)
-const hostName = '127.0.0.1'
-const port = 3000
+const hostName = process.env.HOSTNAME
+const port = process.env.PORT
 
 
 const corsOptions = {
