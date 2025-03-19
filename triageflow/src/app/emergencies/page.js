@@ -16,6 +16,12 @@ const priorityOrder = {
   Low: 4,
 }
 
+const statusOrder = {
+  Active: 1,
+  InProgress: 2,
+  Resolved: 3,
+}
+
 let allEmergencies
 
 
@@ -27,6 +33,7 @@ export default function Emergencies() {
   const [mounted, setMounted] = useState(false)
   const [popup, setPopup] = useState(false)
   const [emergencies, setEmergencies] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const togglePopup = () => {
     setPopup(!popup)
@@ -48,6 +55,7 @@ export default function Emergencies() {
     const response = await fetch('/api/emergencies')
     allEmergencies = await response.json()
     setEmergencies(allEmergencies)
+    setLoading(false)
   }
 
   //Change emergency status
@@ -72,9 +80,18 @@ export default function Emergencies() {
           emergency.description.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     })
-    .sort((a, b) =>  new Date(b.timestamp) - new Date(a.timestamp))
-    .sort((a, b) => (priorityOrder[a.priority] || Infinity) - (priorityOrder[b.priority] || Infinity))
-    : emergencies
+    .sort((a, b) => {
+      // Sort by status (Active first, then InProgress, then Resolved)
+      const statusDiff = (statusOrder[a.status] || Infinity) - (statusOrder[b.status] || Infinity);
+      if (statusDiff !== 0) return statusDiff 
+  
+      // Sort by priority (Higher priority first)
+      const priorityDiff = (priorityOrder[a.priority] || Infinity) - (priorityOrder[b.priority] || Infinity);
+      if (priorityDiff !== 0) return priorityDiff
+  
+      // Sort by timestamp (Latest first)
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    }) : emergencies
 
   const toggleCard = (id) => {
     setExpandedCards((prev) =>
@@ -202,7 +219,9 @@ export default function Emergencies() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : loading === true ? (
+        <p className="text-gray-500">Loading emergencies...</p>
+        ) :(
         <p className="text-gray-500">No emergencies match your search.</p>
       )}
     </div>
