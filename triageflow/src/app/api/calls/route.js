@@ -8,13 +8,8 @@ const client = twilio(accountSID, authToken)
 
 
 export async function POST(req, res) {
-    const formData = await req.formData()
-    const callerNumber = formData.get("From")
-    const city = formData.get("FromCity")
-    const state = formData.get("FromState")
-    const country = formData.get("FromCountry")
-    const zip = formData.get("FromZip")
-    const callSid = formData.get("CallSid")
+    const {From: callerNumber, FromCity: city, FromState: state, FromCountry: country, FromZip: zip, CallSid: callSid } = req.json()
+    const location = `${city}, ${state}, ${country}, ${zip}`
 
     // Construct the absolute URL for the /api/emergencies endpoint
     const host = req.headers.get("host")
@@ -32,19 +27,21 @@ export async function POST(req, res) {
     gather.say(
         { voice: 'alice' }, 
         "Triageflow, what's your emergency?")
-    const response = await fetch(emergenciesUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            phoneNumber: callerNumber,
-            location: `${city}, ${state}, ${country}, ${zip}`,
-            callSid: callSid, 
-            source: 'AI-Automated Call'
+    if (callerNumber && callSid) {
+        const response = await fetch(emergenciesUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                phoneNumber: callerNumber,
+                location: location || 'None',
+                callSid: callSid, 
+                source: 'AI-Automated Call'
+            })
         })
-    })
-    const data = await response.json()
-    console.log(data)
+        const data = await response.json()
+        console.log(data)
+    } 
     return NextResponse.json(twiml.toString())
 }
