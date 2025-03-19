@@ -2,6 +2,7 @@ import OpenAI from "openai"
 import VoiceResponse from "twilio/lib/twiml/VoiceResponse"
 import { NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
+import { dataUpdate } from "../socket/server"
 
 // Initialize OpenAI API client
 const openai = new OpenAI({
@@ -28,6 +29,29 @@ const getResponse = async (message, CALLTRANSCRIPT) => {
   const response = completion.choices[0].message.content.replace("Operator:", "")
   return response
 }
+
+//Extract key details from call
+const summariseCall = async (transcript) => {
+  const completion = await openai.chat.completions.create({
+    model: 'google/gemini-2.0-flash-exp:free',
+    models: ['google/gemini-2.0-flash-thinking-exp:free', 'deepseek/deepseek-r1-zero:free'],
+    messages: [
+      {
+        "role": "system",
+        "content": process.env.SUMMARY_PROMPT
+      },
+      {
+        "role": "user",
+        "content": `Call transcript: ${transcript}`
+      }
+    ],
+  })
+  let response = completion.choices[0].message.content
+  response = response.replace(/```json\s*|\s*```/g, "").trim()
+  const data = JSON.parse(response)
+  return data
+}
+
 
 export async function POST(req, res) {  
     const formData = await req.formData()
@@ -83,13 +107,30 @@ export async function POST(req, res) {
           aiResponse)
         count+=1
     } else {
+      aiResponse = "Thank you for calling in. I will now process help to your location. Goodbye and stay safe."
       twiml.say(
         { voice: 'alice' },
-        "Thank you for calling in. I will now process help to your location. Goodbye and stay safe.")
+        aiResponse)
       twiml.hangup()
+      CALLTRANSCRIPT += `Caller: ${message}\nOperator: ${aiResponse}`
+      const summary = await summariseCall(CALLTRANSCRIPT)
+      const result = await collection.updateOne({ _id: emergency._id }, 
+        { $set: { transcript: CALLTRANSCRIPT,
+          count: count,
+          title: summary.title || 'Unknown',
+          description: summary.description || 'Unknown',
+          location: summary.location,
+          name: summary.location,
+          priority: summary.priority  
+        } })     
+      const updatedData = await dataUpdate()
+      return new NextResponse(twiml.toString(), {
+        headers: { "Content-Type": "text/xml" },
+      }) 
     }
     CALLTRANSCRIPT += `Caller: ${message}\nOperator: ${aiResponse}`
     const result = await collection.updateOne({ _id: emergency._id }, { $set: { transcript: CALLTRANSCRIPT, count: count } })     
+    const updatedData = await dataUpdate()
     return new NextResponse(twiml.toString(), {
       headers: { "Content-Type": "text/xml" },
     })                                       
