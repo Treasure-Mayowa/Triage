@@ -8,7 +8,9 @@ const client = twilio(accountSID, authToken)
 
 
 export async function POST(req, res) {
-    const {From: callerNumber, FromCity: city, FromState: state, FromCountry: country, FromZip: zip, CallSid: callSid } = req.json()
+    const formData = await req.formData()
+    const body = Object.fromEntries(formData.entries())
+    const { From: callerNumber = null, FromCity: city = null, FromState: state = null, FromCountry: country = null, FromZip: zip = null, CallSid: callSid = null } = body
     const location = `${city}, ${state}, ${country}, ${zip}`
 
     // Construct the absolute URL for the /api/emergencies endpoint
@@ -43,5 +45,7 @@ export async function POST(req, res) {
         const data = await response.json()
         console.log(data)
     } 
-    return NextResponse.json(twiml.toString())
+    return new NextResponse(twiml.toString(), {
+        headers: { "Content-Type": "text/xml" },
+      })
 }

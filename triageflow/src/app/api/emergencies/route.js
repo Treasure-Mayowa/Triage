@@ -1,4 +1,4 @@
-// For updating emergencies onf dashboard and stats
+// For updating emergencies on dashboard and stats
 import { connectToDatabase } from "@/lib/mongodb"
 import { NextResponse } from "next/server"
 import validator from "validator"
@@ -19,7 +19,7 @@ export async function GET(req, res) {
 // Fix this for new emergency add
 export async function POST(req) {
     try {
-        const { phoneNumber, location = '', callSid, title = '', description = '', priority = '', status = 'Active', source, transcript, assignedTo = '' } = await req.json()
+        const { phoneNumber, location, callSid, title = 'Unknown', description = 'Unknown', priority = '', status = 'Active', source, transcript = '', assignedTo = '', count = 0 } = await req.json()
         
         if (!phoneNumber || !callSid) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -27,7 +27,6 @@ export async function POST(req) {
 
         const { database } = await connectToDatabase()
         const collection = database.collection("emergencies")
-
         const newEmergency = {
             callSid,
             title: validator.escape(title),
@@ -36,15 +35,16 @@ export async function POST(req) {
             location,
             priority,
             status: status,
-            transcript: transcript || '',
+            transcript: transcript,
             assignedTo,
             timestamp: new Date().toISOString(),
-            source
+            source,
+            count
         }
 
         const result = await collection.insertOne(newEmergency)
         const updatedData = await dataUpdate()
-        return NextResponse.json(result)
+        return NextResponse.json({ "message": "Emergency added successfully"})
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 })
     }
