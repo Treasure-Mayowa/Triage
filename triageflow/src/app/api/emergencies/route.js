@@ -19,9 +19,9 @@ export async function GET(req, res) {
 // Fix this for new emergency add
 export async function POST(req) {
     try {
-        const { phoneNumber, location, id, title = '', description = '', priority = '', status = 'Active', source, transcript, assignedTo = '' } = await req.json()
+        const { phoneNumber, location = '', callSid, title = '', description = '', priority = '', status = 'Active', source, transcript, assignedTo = '' } = await req.json()
         
-        if (!phoneNumber || !location || !callID) {
+        if (!phoneNumber || !callSid) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
         }
 
@@ -29,17 +29,17 @@ export async function POST(req) {
         const collection = database.collection("emergencies")
 
         const newEmergency = {
-            id,
+            callSid,
             title: validator.escape(title),
             description: validator.escape(description),
             phoneNumber,
             location,
-            callID,
             priority,
             status: status,
             transcript: transcript || '',
             assignedTo,
             timestamp: new Date().toISOString(),
+            source
         }
 
         const result = await collection.insertOne(newEmergency)
