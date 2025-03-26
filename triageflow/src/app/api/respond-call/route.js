@@ -98,6 +98,8 @@ export async function POST(req, res) {
       }
       const gather = twiml.gather({
         timeout: 10,
+        speechTimeout: 'auto',
+        speechModel: 'experimental_conversations', 
         input: "speech",
         method: "POST",
         action: "/api/respond-call"
@@ -120,7 +122,7 @@ export async function POST(req, res) {
           title: summary.title || 'Unknown',
           description: summary.description || 'Unknown',
           location: summary.location,
-          name: summary.location,
+          name: summary.name,
           priority: summary.priority  
         } })     
       const updatedData = await dataUpdate()

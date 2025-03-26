@@ -22,6 +22,8 @@ export async function POST(req, res) {
     var twiml = new VoiceResponse()
     const gather = twiml.gather({
         timeout: 10,
+        speechTimeout: 'auto',
+        speechModel: 'experimental_conversations', 
         input: "speech",
         method: "POST",
         action: respondCallUrl
