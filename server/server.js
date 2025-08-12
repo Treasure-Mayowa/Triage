@@ -9,6 +9,7 @@ const VoiceResponse = twilio.twiml.VoiceResponse
 const validator = require('validator')
 const callsRouter = require('./routes/respond-call')
 const { dataUpdate } = require('./utils/dataUpdate')
+const { ObjectId } = require('mongodb')
 
 const app = express()
 const server = http.createServer(app)
@@ -26,17 +27,27 @@ const client = twilio(accountSID, authToken)
 
 
 const corsOptions = {
-    origin: ['https://triageflow.vercel.app/', 'http://localhost:3000', '*'],
-    methods: ['GET', 'POST', 'DELETE'],
+    origin: ['https://triageflow.vercel.app/', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'DELETE', 'PUT'],
     optionsSuccessStatus: 200
+}
+
+const corsOptions2 = {
+  origin: ['https://triageflow.vercel.app/', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'DELETE', 'PUT'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }
 
 // New socket server
 const io = new Server(server, {
     cors: corsOptions
 })
+
 // Setting io instance
 app.set('io', io)
+
+// Apply CORS middleware
+app.use(cors(corsOptions2))
 
 io.on("connection", (socket) => {
     
@@ -44,6 +55,7 @@ io.on("connection", (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id)
   })
+  
 
 })
 
@@ -123,10 +135,13 @@ app.post('/api/emergencies', async (req, res) => {
   try {
         const { phoneNumber, location, callSid, title = 'Unknown', description = 'Unknown', priority = '', status = 'Active', source, transcript = '', assignedTo = '', count = 0 } = await req.body
         
-        if (!phoneNumber || !callSid) {
-          res.status(400).json({ error: "Missing required fields" })
+        if (source === 'AI-Automated Call' && (!phoneNumber || !callSid)) {
+          return res.status(400).json({ error: "Missing required fields for automated call" })
         }
-
+    
+        if (source === 'Dashboard Add' && !phoneNumber) {
+          return res.status(400).json({ error: "Phone number is required" })
+        }
         const { database } = await connectToDatabase()
         const collection = database.collection("emergencies")
         const newEmergency = {
@@ -146,7 +161,42 @@ app.post('/api/emergencies', async (req, res) => {
 
         const result = await collection.insertOne(newEmergency)
         const updatedData = await dataUpdate(req.app.get('io'))
-        res.json({ message: "Emergency added successfully"})
+        return res.json({ message: "Emergency added successfully"})
+    } catch (err) {
+      return res.status(500).json({ error: err.message })
+    }
+})
+
+app.put('/api/emergencies/:id', async (req, res) => {
+  try {
+        const { status } = req.body
+        const id = req.params.id
+        
+        if (!status|| !id) {
+          res.status(400).json({ error: "Missing required fields" })
+        }
+
+        const objectId = new ObjectId(id) // Convert to ID to ObjectId
+
+        // Validate status value
+        const validStatuses = ['Active', 'In Progress', 'Resolved'];
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({ error: "Invalid status value" });
+        }        
+
+        const { database } = await connectToDatabase()
+        const collection = database.collection("emergencies")
+        const result = await collection.updateOne(
+          { _id: objectId }, // Filter to find the document
+          { $set: { status: status } }, // Update operation using $set
+          { returnDocument: 'after' }
+        )
+
+        if (!result.acknowledged) {
+          res.status(404).json({ error: "Invalid emergency ID", result: result})
+        }
+        const updatedData = await dataUpdate(req.app.get('io'))
+        res.json({ message: "Emergency updated successfully"})
     } catch (err) {
       res.status(500).json({ error: err.message })
     }

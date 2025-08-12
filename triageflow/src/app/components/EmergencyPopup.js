@@ -1,13 +1,58 @@
 import { useState } from 'react'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
+
 export default function EmergencyPopup({ popup }) {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [phoneNumber, setPhoneNumber] = useState('')
     const [priority, setPriority] = useState('critical')
+    const [location, setLocation] = useState('')
+    const [transcript, setTranscript] = useState('')
+    const [loading, setLoading] = useState(false)
     
-    const addEmergency = (e) => {
+    const addEmergency = async (e) => {
         e.preventDefault()
+        setLoading(true)
+        try {
+          const response = await fetch(`${API_URL}/api/emergencies`, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                phoneNumber: phoneNumber, 
+                location: location, 
+                callSid: null, 
+                title: title, 
+                description: description, 
+                priority: priority,  
+                source: "Dashboard Add", 
+                transcript: transcript, 
+                assignedTo: null
+            })
+        })
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+        console.log('Emergency created successfully:', result)
+
+        // Reset form
+        setTitle('')
+        setDescription('')
+        setPhoneNumber('')
+        setPriority('critical')
+        setLocation('')
+        setTranscript('')
+    } catch (error) {
+      console.error(`Error fetching emergencies: ${error}`)
+    } finally {
+      setLoading(false)
+      popup()
+    }
+        
     }
     return (
         <div 
@@ -21,19 +66,25 @@ export default function EmergencyPopup({ popup }) {
                     </svg>
                 </div>
                 <form className="mt-4" onSubmit={addEmergency}>
-                    <input type="text" placeholder="Title" className="w-full p-2 border border-gray-300 rounded-lg" />
-                    <input type="text" placeholder="description" className="w-full p-2 border border-gray-300 rounded-lg mt-4" />
-                    <input type="number" placeholder="Phone Number" className="w-full p-2 border border-gray-300 rounded-lg mt-4" />    
+                <fieldset disabled={loading}>
+                    <input type="text" placeholder="Title" className="w-full p-2 border border-gray-300 rounded-lg" value={title} onChange={(e)=> setTitle(e.target.value)} required />
+                    <input type="text" placeholder="Location" className="w-full p-2 border border-gray-300 rounded-lg mt-4" value={location} onChange={(e)=> setLocation(e.target.value)}  required />
+                    <input type="number" placeholder="Phone Number" className="w-full p-2 border border-gray-300 rounded-lg mt-4" value={phoneNumber} onChange={(e)=> setPhoneNumber(e.target.value)}  required />    
+                    <input type="text" placeholder="Description" className="w-full p-2 border border-gray-300 rounded-lg mt-4" value={description} onChange={(e)=> setDescription(e.target.value)}  required />
                     <span>
                         <select 
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priority === 'critical'? 'bg-red-100 text-red-800': priority === 'high'? 'bg-orange-100 text-orange-800': 'bg-yellow-100 text-yellow-800'}`}
+                            className={`px-4 py-2 mt-4 inline-flex text-xs leading-5 font-semibold rounded-full ${priority === 'critical'? 'bg-red-100 text-red-800': priority === 'high'? 'bg-orange-100 text-orange-800': 'bg-yellow-100 text-yellow-800'}`}
                             value={priority}
-                            onChange={(e)=> setPriority(e.target.value)}>
-                            <option value="critical">Critical</option>
-                            <option value="high">High</option>
+                            onChange={(e)=> setPriority(e.target.value)} required>
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
                         </select>
                     </span>
-                    <button className="px-4 py-2 mt-4 bg-red-500 text-white rounded-lg" type="submit">Create Emergency</button>
+                    <textarea placeholder="Call Transcript/Details (Optional)" className="w-full p-2 border border-gray-300 rounded-lg mt-4" value={transcript} onChange={(e)=> setTranscript(e.target.value)} />
+                    <button className="px-4 py-2 mt-4 bg-red-500 text-white rounded-lg" type="submit">{loading? ("Adding...") : ("Create Emergency")} </button>
+                </fieldset>
                 </form>    
             </div>
         </div>

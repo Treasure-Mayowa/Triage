@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import Link from 'next/link'
 import EmergencyPopup from '../components/EmergencyPopup'
 import { io } from 'socket.io-client'
 //import { allEmergencies } from './data'
@@ -24,6 +23,7 @@ const statusOrder = {
 
 let allEmergencies
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
 
 export default function Emergencies() {
   const [priorityFilter, setPriorityFilter] = useState('All')
@@ -41,33 +41,93 @@ export default function Emergencies() {
 
   const socket = io('https://triage-pww1.onrender.com')
   // Set mounted flag to true after client has mounted
+
   useEffect(() => {
-    //Fetch emergencies
-    fecthEmergencies()
+    
+    // Fetch emergencies with retry logic
+    (async () => {
+      try {
+        const result = await retryApiCall() // Call retry function logic with default parameter
+        console.log("API call successful:", result)
+      } catch (finalError) {
+        console.log("API call failed after all retries:", finalError.message)
+      }
+    })()    
+
     socket.on('emergency-updated', (data) => {
       setEmergencies(data)
     })
     setMounted(true)
   }, [])
 
+  //API retry logic
+  async function retryApiCall(maxRetries=3, delayMs=1000) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetchEmergencies()
+      // Check for successful response criteria (e.g., HTTP status code 200)
+      if (response && response.ok) {
+        return response.data // Return data on success
+      } else {
+        throw new Error(`API call failed with error: ${response.data}`)
+      }
+    } catch (error) {
+      console.error(`Attempt ${attempt + 1} failed:`, error.message);
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs)) // Wait before retrying
+      } else {
+        console.error("All retry attempts exhausted")
+        throw error // Re-throw error after exhausting retries
+      }
+    }
+  }
+}
+
   // Fetch emergencies from db
-  const fecthEmergencies = async () => {
-    const response = await fetch('/api/emergencies')
-    allEmergencies = await response.json()
-    setEmergencies(allEmergencies)
-    setLoading(false)
+  const fetchEmergencies = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/emergencies`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      allEmergencies = await response.json()
+      setEmergencies(allEmergencies)
+      return { ok: true, status: response.status, data: "Successful"}
+    } catch (error) {
+      console.error('Error fetching emergencies')
+      throw new Error(`Error fetching emergencies: ${error}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  //Change emergency status
+  // Change emergency status
   const changeStatus = async (newStatus, id) => {
-    const response = await fetch(`/api/emergencies/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    })
-
+    try {
+      const response = await fetch(`${API_URL}/api/emergencies/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      console.log('Status updated successfully:', data)
+      
+      // Update local state to reflect the change
+      setEmergencies(prevEmergencies => 
+        prevEmergencies.map(emergency => 
+          emergency._id === id 
+            ? { ...emergency, status: newStatus }
+            : emergency
+        )
+      )      
+    } catch (error) {
+      console.error("Error updating emergency", error)
   }
-
+  }
   // Filter and sort emergencies
   const filteredEmergencies = emergencies? emergencies
     .filter((emergency) => {
@@ -90,8 +150,8 @@ export default function Emergencies() {
       if (priorityDiff !== 0) return priorityDiff
   
       // Sort by timestamp (Latest first)
-      return new Date(b.timestamp) - new Date(a.timestamp);
-    }) : emergencies
+      return new Date(b.timestamp) - new Date(a.timestamp)
+    }) : []
 
   const toggleCard = (id) => {
     setExpandedCards((prev) =>
@@ -121,6 +181,12 @@ export default function Emergencies() {
           >
             New Emergency
           </button>
+        </div>
+        <div>
+        <h2>Demo of Actual Call with Triageflow</h2>
+        {popup? null : <audio controls>
+          <source src='https://dl.dropboxusercontent.com/scl/fi/ruzdof5vpz1uqizv3olwf/0811.MP3?rlkey=zn1im2u4dxiz9q6k81jtvfin3&st=zhj4rnqu' type='audio/mpeg' />
+        </audio>}
         </div>
       </div>
 
@@ -178,9 +244,7 @@ export default function Emergencies() {
             >
               <div className="p-4 bg-gray-50">
                 <h2 className="text-xl font-semibold text-indigo-600">
-                  <Link href={`/emergencies/${emergency._id}`}>
-                    {emergency.title}
-                  </Link>
+                {emergency.title}
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">{emergency.location}</p>
                 <div className="mt-2"> 

@@ -14,7 +14,7 @@ export default function Messages() {
       <Head>
         <title>Messages - Emergency Triage</title>
       </Head>
-      
+      <p>This is a mock messages page, wont be functional till users (responders) can sign in and make accounts</p>
       <div className="pb-5 border-b border-gray-200 sm:flex sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
         <div className="mt-3 flex sm:mt-0">
