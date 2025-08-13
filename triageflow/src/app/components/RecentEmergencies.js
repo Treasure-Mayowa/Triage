@@ -50,7 +50,7 @@ export default function RecentEmergencies() {
         throw new Error(`API call failed with error: ${response.data}`)
       }
     } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed:`, error.message);
+      console.error(`Attempt ${attempt + 1} failed:`, error.message)
       if (attempt < maxRetries - 1) {
         await new Promise(resolve => setTimeout(resolve, delayMs)) // Wait before retrying
       } else {
@@ -75,11 +75,11 @@ export default function RecentEmergencies() {
         .filter(emergency => emergency.status === 'Active' )
         .sort((a, b) => {
         // Compare priorities
-        const priorityDiff = (priorityOrder[a.priority] || Infinity) - (priorityOrder[b.priority] || Infinity);
-        if (priorityDiff !== 0) return priorityDiff;
+        const priorityDiff = (priorityOrder[a.priority] || Infinity) - (priorityOrder[b.priority] || Infinity)
+        if (priorityDiff !== 0) return priorityDiff
         
         // Then sort by timestamp
-        return new Date(b.timestamp) - new Date(a.timestamp);
+        return new Date(b.timestamp) - new Date(a.timestamp)
       })
       .slice(0, 5) // Return only five 
     setEmergencies(result)

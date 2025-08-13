@@ -59,15 +59,17 @@ io.on("connection", (socket) => {
 
 })
 
-server.listen(port, hostName, () => {
-    console.log(`Server running at http://${hostName}:${port}/`)    
-})
-
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(port, hostName, () => {
+      console.log(`Server running at http://${hostName}:${port}/`)    
+  })
+}
 
 app.get('/socket-emergency', async (req, res) => {
   try {
       const response = await dataUpdate(req.app.get('io'))
-      response.error? res.status(500).json({ error: response.error}) : res.json({ message: "Success!" })
+      response.error? 
+        res.status(500).json({ error: response.error}) : res.json({ message: "Success!" })
     } catch (error) {
       console.error('Error broadcasting emergencies:', error)
       res.status(500).json({ error: error.message })
@@ -75,6 +77,13 @@ app.get('/socket-emergency', async (req, res) => {
 })
 
 // Triageflow API routes
+/**
+ * Handles incoming emergency calls
+ * @route POST /api/calls
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>} - TwiML response
+ */
 app.post('/api/calls', async (req, res) => {
   const body = req.body
   const { From: callerNumber = null, FromCity: city = null, FromState: state = null, FromCountry: country = null, FromZip: zip = null, CallSid: callSid = null } = body
@@ -118,6 +127,13 @@ app.post('/api/calls', async (req, res) => {
   res.send(twiml.toString())
 })
 
+/**
+ * Retrieves all emergencies from the database
+ * @route GET /api/emergencies
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<Response>} JSON array of all emergencies
+ */
 app.get('/api/emergencies', async (req, res)=> {
   try {
       const { database } = await connectToDatabase()
@@ -131,6 +147,25 @@ app.get('/api/emergencies', async (req, res)=> {
     }
 })
 
+/**
+ * Creates a new emergency to add to database
+ * @route POST /api/emergencies
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.phoneNumber - Contact phone number
+ * @param {string} [req.body.location] - Location information
+ * @param {string} [req.body.callSid] - Twilio call SID (required for AI calls)
+ * @param {string} [req.body.title='Unknown'] - Emergency title
+ * @param {string} [req.body.description='Unknown'] - Emergency description
+ * @param {string} [req.body.priority=''] - Emergency priority level
+ * @param {string} [req.body.status='Active'] - Emergency status
+ * @param {string} req.body.source - Source of emergency (AI-Automated Call or Dashboard Add)
+ * @param {string} [req.body.transcript=''] - Call transcript
+ * @param {string} [req.body.assignedTo=''] - Assigned responder
+ * @param {number} [req.body.count=0] - Update count
+ * @returns {Promise<Response>} JSON response indicating success or error
+ */
 app.post('/api/emergencies', async (req, res) => {
   try {
         const { phoneNumber, location, callSid, title = 'Unknown', description = 'Unknown', priority = '', status = 'Active', source, transcript = '', assignedTo = '', count = 0 } = await req.body
@@ -167,6 +202,19 @@ app.post('/api/emergencies', async (req, res) => {
     }
 })
 
+/**
+ * Updates an emergency's status
+ * @route PUT /api/emergecies/:id
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Emergency ID
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.status - New status (Active|In Progress|Resolved)
+ * @returns {Promise<Response>} JSON response indicating success or error
+ * @throws {400} If status is invalid or required fields are missing
+ * @throws {404} If emergency is not found
+ */
 app.put('/api/emergencies/:id', async (req, res) => {
   try {
         const { status } = req.body
@@ -179,9 +227,9 @@ app.put('/api/emergencies/:id', async (req, res) => {
         const objectId = new ObjectId(id) // Convert to ID to ObjectId
 
         // Validate status value
-        const validStatuses = ['Active', 'In Progress', 'Resolved'];
+        const validStatuses = ['Active', 'In Progress', 'Resolved']
         if (!validStatuses.includes(status)) {
-          return res.status(400).json({ error: "Invalid status value" });
+          return res.status(400).json({ error: "Invalid status value" })
         }        
 
         const { database } = await connectToDatabase()
@@ -202,4 +250,14 @@ app.put('/api/emergencies/:id', async (req, res) => {
     }
 })
 
+/**
+ * Handles response to ongoing emergency calls
+ * @route POST /api/respond-call
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>} - TwiML response
+ */
 app.post('/api/respond-call', callsRouter)
+
+
+module.exports = { app }

@@ -72,7 +72,7 @@ export default function Emergencies() {
         throw new Error(`API call failed with error: ${response.data}`)
       }
     } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed:`, error.message);
+      console.error(`Attempt ${attempt + 1} failed:`, error.message)
       if (attempt < maxRetries - 1) {
         await new Promise(resolve => setTimeout(resolve, delayMs)) // Wait before retrying
       } else {
@@ -142,11 +142,11 @@ export default function Emergencies() {
     })
     .sort((a, b) => {
       // Sort by status (Active first, then InProgress, then Resolved)
-      const statusDiff = (statusOrder[a.status] || Infinity) - (statusOrder[b.status] || Infinity);
+      const statusDiff = (statusOrder[a.status] || Infinity) - (statusOrder[b.status] || Infinity)
       if (statusDiff !== 0) return statusDiff 
   
       // Sort by priority (Higher priority first)
-      const priorityDiff = (priorityOrder[a.priority] || Infinity) - (priorityOrder[b.priority] || Infinity);
+      const priorityDiff = (priorityOrder[a.priority] || Infinity) - (priorityOrder[b.priority] || Infinity)
       if (priorityDiff !== 0) return priorityDiff
   
       // Sort by timestamp (Latest first)
